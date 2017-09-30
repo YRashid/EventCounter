@@ -5,7 +5,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * info: возможно, есть смысл держать в памяти данные только за последний час. А за последний день держать на диске в бд.
+ * Описание: https://github.com/YRashid/EventCounter/blob/master/readme.md
  * Created by Rashid.Iaraliev on 30.09.17.
  */
 public class ConcurrentEventCounter implements EventCounter {
@@ -28,7 +28,6 @@ public class ConcurrentEventCounter implements EventCounter {
 
 
     public ConcurrentEventCounter() {
-        //запускать задачи удаления устаревших данных через каждую секунду, после завершения предыдущей задачи
         initMinuteCleaner();
         initHourCleaner();
         initDayCleaner();
