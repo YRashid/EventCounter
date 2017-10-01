@@ -121,7 +121,7 @@ public class ConcurrentEventCounter implements EventCounter {
     }
 
     @Override
-    public boolean countEvent() {
+    public boolean submitEvent() {
         boolean result = eventsTimeForMinuteQueue.offer(System.currentTimeMillis());
         if (result) {
             quantityByLastMinute.incrementAndGet();

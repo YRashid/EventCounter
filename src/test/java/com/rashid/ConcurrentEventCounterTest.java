@@ -1,7 +1,6 @@
 package com.rashid;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
@@ -26,7 +25,7 @@ public class ConcurrentEventCounterTest {
 
     @Test
     public void singleThreadSingleEvent() throws Exception {
-        eventCounter.countEvent();
+        eventCounter.submitEvent();
         assertEquals(1, eventCounter.getQuantityByLastMinute());
         assertEquals(1, eventCounter.getQuantityByLastHour());
         assertEquals(1, eventCounter.getQuantityByLastDay());
@@ -41,11 +40,11 @@ public class ConcurrentEventCounterTest {
 
     @Test
     public void singleThreadMultipleEvent() throws Exception {
-        eventCounter.countEvent();
+        eventCounter.submitEvent();
         TimeUnit.MILLISECONDS.sleep(50L);
-        eventCounter.countEvent();
+        eventCounter.submitEvent();
         TimeUnit.MILLISECONDS.sleep(50L);
-        eventCounter.countEvent();
+        eventCounter.submitEvent();
         TimeUnit.MILLISECONDS.sleep(50L);
 
         assertEquals(3, eventCounter.getQuantityByLastMinute());
@@ -92,7 +91,7 @@ public class ConcurrentEventCounterTest {
         setFinalStatic(ConcurrentEventCounter.class.getDeclaredField("MILLIS_IN_DAY"), 15000L);
         eventCounter = new ConcurrentEventCounter();
 
-        eventCounter.countEvent();
+        eventCounter.submitEvent();
 
         assertEquals(1, eventCounter.getQuantityByLastMinute());
         assertEquals(1, eventCounter.getQuantityByLastHour());
@@ -177,7 +176,7 @@ public class ConcurrentEventCounterTest {
                     e.printStackTrace();
                 }
                 for (int j = 0; j < EVENTS_COUNT; j++) {
-                    eventCounter.countEvent();
+                    eventCounter.submitEvent();
                 }
             }).start();
         }

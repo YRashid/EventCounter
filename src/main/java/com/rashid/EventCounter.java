@@ -10,7 +10,7 @@ public interface EventCounter {
      *
      * @return true/false - событие учтено/не учтено
      */
-    boolean countEvent();
+    boolean submitEvent();
 
     /**
      * Выдать число событий за последнюю минуту (60 секунд)
