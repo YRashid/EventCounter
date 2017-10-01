@@ -18,35 +18,37 @@ public class ConcurrentEventCounter implements EventCounter {
     private AtomicLong quantityByLastHour = new AtomicLong();
     private AtomicLong quantityByLastDay = new AtomicLong();
 
-    private Queue<Long> eventsTimeForMinuteQueue = new ConcurrentLinkedQueue<>();
+    private Queue<Long> bufferQueue = new ConcurrentLinkedQueue<>();
+    private Queue<EventsBucket> eventsTimeForMinuteQueue = new ConcurrentLinkedQueue<>();
     private Queue<EventsBucket> eventsTimeForHourQueue = new ConcurrentLinkedQueue<>();
     private Queue<EventsBucket> eventsTimeForDayQueue = new ConcurrentLinkedQueue<>();
 
+    private ScheduledExecutorService bufferCleaner = Executors.newSingleThreadScheduledExecutor();
     private ScheduledExecutorService minuteCleaner = Executors.newSingleThreadScheduledExecutor();
     private ScheduledExecutorService hourCleaner = Executors.newSingleThreadScheduledExecutor();
     private ScheduledExecutorService dayCleaner = Executors.newSingleThreadScheduledExecutor();
 
 
     public ConcurrentEventCounter() {
+        initBufferCleaner();
         initMinuteCleaner();
         initHourCleaner();
         initDayCleaner();
     }
 
     /**
-     * Устаревшие события из очереди последней минуты перекидываются в очередь для последнего часа.
+     * События из буфера объединяются и перекидываются в очередь последней минуты.
+     * TODO: разгребать буфер можно в несколько потоков, но тогда сжатие не будет максимальным
      */
-    private void initMinuteCleaner() {
-        minuteCleaner.scheduleWithFixedDelay(() -> {
+    private void initBufferCleaner() {
+        bufferCleaner.scheduleWithFixedDelay(() -> {
             Long eventTime;
             EventsBucket eventsBucket = null;
 
-            // удаляем устаревшее событие из очереди событий последней минуты
-            // объединяем в eventsBucket устаревшие события, которые отличаются по времени меньше чем на секунду
-            // добавляем объединенные события (eventsBucket) в очередь событий последнего часа
-            while ((eventTime = eventsTimeForMinuteQueue.peek()) != null && !isInLastPeriod(TimeUnit.MINUTES, eventTime) && !Thread.interrupted()) {
-                eventsTimeForMinuteQueue.poll();
-                quantityByLastMinute.decrementAndGet();
+            // объединяем в eventsBucket события, которые отличаются по времени меньше чем на секунду
+            // удаляем объединенные события из буфера
+            // добавляем объединенные события (eventsBucket) в очередь событий последней минуты
+            while ((eventTime = bufferQueue.poll()) != null && !Thread.interrupted()) {
 
                 if (eventsBucket == null) {
                     eventsBucket = new EventsBucket(eventTime, 1);
@@ -56,16 +58,31 @@ public class ConcurrentEventCounter implements EventCounter {
                 if (Math.abs(eventTime - eventsBucket.getTime()) <= MILLIS_IN_SECOND) {
                     eventsBucket.incrementCountOfEvents();
                 } else {
-                    eventsTimeForHourQueue.offer(eventsBucket);
+                    eventsTimeForMinuteQueue.offer(eventsBucket);
                     eventsBucket = new EventsBucket(eventTime, 1);
                 }
             }
 
             if (eventsBucket != null) {
-                eventsTimeForHourQueue.offer(eventsBucket);
+                eventsTimeForMinuteQueue.offer(eventsBucket);
             }
 
 
+        }, 0, MILLIS_IN_SECOND/5, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Устаревшие события из очереди последней минуты перекидываются в очередь для последнего часа.
+     */
+    private void initMinuteCleaner() {
+        minuteCleaner.scheduleWithFixedDelay(() -> {
+            EventsBucket eventsBucket;
+            while ((eventsBucket = eventsTimeForMinuteQueue.peek()) != null && !isInLastPeriod(TimeUnit.MINUTES, eventsBucket.getTime()) && !Thread.interrupted()) {
+                eventsTimeForMinuteQueue.poll();
+                final long countOfEvents = eventsBucket.getCountOfEvents();
+                quantityByLastMinute.updateAndGet(x -> x - countOfEvents);
+                eventsTimeForHourQueue.offer(eventsBucket);
+            }
         }, 0, MILLIS_IN_SECOND, TimeUnit.MILLISECONDS);
     }
 
@@ -122,7 +139,7 @@ public class ConcurrentEventCounter implements EventCounter {
 
     @Override
     public boolean submitEvent() {
-        boolean result = eventsTimeForMinuteQueue.offer(System.currentTimeMillis());
+        boolean result = bufferQueue.offer(System.currentTimeMillis());
         if (result) {
             quantityByLastMinute.incrementAndGet();
             quantityByLastHour.incrementAndGet();

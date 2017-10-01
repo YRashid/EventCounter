@@ -1,6 +1,7 @@
 package com.rashid;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
@@ -83,7 +84,7 @@ public class ConcurrentEventCounterTest {
 
     }
 
-//    @Ignore("Using reflection to modify static final fields")
+    @Ignore("Using reflection to modify static final fields")
     @Test
     public void testWithDangerousReflection_singleThread() throws Exception {
         setFinalStatic(ConcurrentEventCounter.class.getDeclaredField("MILLIS_IN_MINUTE"), 5000L);
@@ -115,7 +116,7 @@ public class ConcurrentEventCounterTest {
         resetDefaultTimeConstants();
     }
 
-//    @Ignore("Using reflection to modify static final fields")
+    @Ignore("Using reflection to modify static final fields")
     @Test
     public void testWithDangerousReflection_multiThreads() throws Exception {
         setFinalStatic(ConcurrentEventCounter.class.getDeclaredField("MILLIS_IN_MINUTE"), 5000L);
