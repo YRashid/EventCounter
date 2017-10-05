@@ -167,6 +167,7 @@ public class ConcurrentEventCounter implements EventCounter {
      * Остановить потоки созданные для разбора очередей
      */
     public void stopWorkers() {
+        bufferCleaner.shutdownNow();
         minuteCleaner.shutdownNow();
         hourCleaner.shutdownNow();
         dayCleaner.shutdownNow();
